@@ -1,70 +1,71 @@
 #!/bin/bash
 
-# Fungsi untuk menampilkan animasi loading
+# Fungsi untuk animasi loading sederhana
 loading() {
-    local pid=$1
-    local delay=0.1
-    local spinner=( '|' '/' '-' '\' )
-
-    while [ -d /proc/$pid ]; do
-        for i in "${spinner[@]}"; do
-            echo -ne "\rInstalling... $i"
-            sleep $delay
+    echo -n "Loading"
+    while true; do
+        for i in '.' '..' '...'; do
+            echo -ne "$i\b\b\b"
+            sleep 0.5
         done
     done
-    echo -ne "\r                    \r"  # Hapus garis loading setelah selesai
 }
 
-# Fungsi untuk menjalankan perintah di latar belakang dengan animasi loading
-run_with_loading() {
-    local command=$1
-    bash -c "$command" >/dev/null 2>&1 &  # Jalankan perintah di latar belakang tanpa log
-    local pid=$!
-    loading $pid
-    wait $pid
+# Fungsi untuk memastikan animasi loading berhenti
+stop_loading() {
+    kill "$1" 2>/dev/null
+    wait "$1" 2>/dev/null
+    echo -e "\n"
 }
 
-# Header instalasi
+# Menampilkan header instalasi
 echo "===================================="
-echo "     Setup Dependensi dan Tools     "
+echo "   Instalasi Dependensi dan Tools   "
 echo "===================================="
+
+# Memberi jeda untuk kesan proses awal
 sleep 1
 
 # Memperbarui dan meng-upgrade paket
-echo -e "\nMemperbarui dan meng-upgrade paket..."
-run_with_loading "pkg update -y && pkg upgrade -y"
-echo "Pembaruan dan upgrade selesai."
+echo -e "\nMemperbarui paket Termux..."
+pkg update -y && pkg upgrade -y
 
 # Menginstal Python3
 echo -e "\nMenginstal Python3..."
-run_with_loading "pkg install python3 -y"
-echo "Python3 berhasil diinstal."
-
-# Menginstal Figlet
-echo -e "\nMenginstal Figlet..."
-run_with_loading "pkg install figlet -y"
-echo "Figlet berhasil diinstal."
+pkg install python3 -y
 
 # Daftar dependensi Python
 dependencies=(
-    "requests"
     "screeninfo"
+    "requests"
     "rich"
 )
 
 # Menginstal dependensi Python
-echo -e "\nMenginstal dependensi Python..."
+echo -e "\nMengunduh dan menginstal dependensi Python..."
 for dep in "${dependencies[@]}"; do
-    echo -e "\nMenginstal $dep..."
-    run_with_loading "pip install $dep --quiet"
+    echo -e "\nInstalasi $dep..."
+    # Jalankan loading sebagai background process
+    loading &
+    loader_pid=$!
+    pip install "$dep" --quiet
+    stop_loading "$loader_pid"  # Hentikan loading setelah instalasi selesai
     echo "$dep berhasil diinstal."
 done
 
-# Pesan instalasi selesai
-figlet "Instalasi Selesai"
-echo "===================================="
-echo " Semua dependensi dan tools telah terpasang."
+# Menginstal android-tools
+echo -e "\nMenginstal android-tools..."
+pkg install android-tools -y
+
+# Menginstal figlet
+echo -e "\nMenginstal figlet..."
+pkg install figlet -y
+
+# Menampilkan pesan instalasi selesai dengan figlet
+echo -e "\n===================================="
+figlet "Instalasi Selesai!"
+echo "   Semua dependensi dan tools telah terpasang."
 echo "===================================="
 
-# Tunggu input sebelum keluar
+# Menunggu input untuk keluar
 read -p "Tekan Enter untuk keluar..."
